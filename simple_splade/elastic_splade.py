@@ -13,7 +13,7 @@ class splade:
             model_name (str): name of the model
             tokenizer_name (str): name of the tokenizer
         """
-        self.tokenizer = AutoTokenizer.from_pretrained(tokenizer_name)
+        self.tokenizer = AutoTokenizer.from_pretrained(tokenizer_name, bos_token="<s>")
         self.model = AutoModelForMaskedLM.from_pretrained(model_name)
 
     def __tokenize_and_preserve(self, sentence, text_labels=None):
@@ -30,6 +30,7 @@ class splade:
             # Tokenize the word and count # of subwords the word is broken into
             tokenized_word = self.tokenizer.tokenize(word)
             n_subwords = len(tokenized_word)
+
 
             # Add the tokenized word to the final tokenized word list
             tokenized_sentence.extend(tokenized_word)
@@ -52,8 +53,8 @@ class splade:
             X_m = X.clone()
             for mask_token_index, token, _ in lst:
                 ti = mask_token_index
-                if self.tokenizer.bos_token:
-                    ti += 1
+                # if self.tokenizer.bos_token:
+                #     ti += 1
                 X_m[0, ti] = self.tokenizer.mask_token_id
             logits = self.model(X_m).logits
             for mask_token_index, token, _ in lst:
@@ -62,7 +63,9 @@ class splade:
                     ::-1
                 ][:k]
                 max_tokens = self.tokenizer.convert_ids_to_tokens(max_ids)
-                ret[wi].extend(max_tokens)
+                max_scores = np.sort(mask_token_logits.to("cpu").detach().numpy())[::-1][ :k]
+
+                ret[wi].extend(zip(max_tokens, max_scores))
         ret = dict(ret)
         if self.tokenizer.bos_token:
             del ret[0]
@@ -71,11 +74,26 @@ class splade:
     def __only_alpha(self, txt):
         return "".join(c for c in txt if c in string.ascii_letters)
 
-    def __elastic_format(self, expanded_list):
+    def __elastic_format(self, expanded_list, text):
         ret = []
+        text = text.lower().split()
         for words in expanded_list:
-            words = {self.__only_alpha(w).lower() for w in words}  # set
-            t = "(" + " OR ".join(words) + ")"
+            # make the original word have the highest score
+            max_score = max(w[1] for w in words)
+            words = [(w[0], w[1] + max_score) if w[0].lower() in text else w for w in words]
+            norm_factor = sum(w[1] for w in words)
+            # print(words)
+            words = [(self.__only_alpha(w[0]).lower(), w[1]) for w in words if w[0] != self.tokenizer.bos_token]
+            # unite equal words and sum their scores
+            unique_words = {w[0] for w in words}
+            words = [(unique, sum(w[1] for w in words if w[0] == unique)) for unique in unique_words]
+            # sort by score
+            words = sorted(words, key=lambda x: x[1], reverse=True)
+            # print(words)
+            t = "("
+            for w in words:
+                t += f"{w[0]}^{round(float(w[1])/norm_factor, 2)} OR "
+            t = f"{t[:-4]})" # remove last OR
             ret.append(t)
         return " ".join(ret)
 
@@ -87,4 +105,4 @@ class splade:
             str: splade-ified text
         """
         me = self.__mask_expansion(text)
-        return self.__elastic_format(me)
+        return self.__elastic_format(me, text)
