@@ -1,10 +1,18 @@
-# PyPi Cookie Cutter
+# Elastic4Splade
 
-## Folder Structure
-1. `pkg/` - the package to be deployed.
-2. `docs/` - template for readthedocs documentation.
-3. `test/` - unit tests for the package.
-4. `notebooks/` - throw away jupyter notebooks.
+A simple query expansion wrapper for elastic search, that uses keyword custom weights derived from an huggingface masked-language-model transformer.
 
-## Automation
-Any update to the master branch should trigger a github action to push latest version to `pypi`
+## Example usage
+
+    from splade4elastic import SpladeRewriter
+    model_name = "bert-base-uncased"
+    splader = SpladeRewriter(model_name)
+    test_texts = [
+        "My name is John",
+        "The quick brown fox jumps over the lazy dog",
+        "I like to eat apples",
+    ]
+    for test_text in test_texts:
+        print(test_text)
+        print(splader.query_expand(test_text))
+

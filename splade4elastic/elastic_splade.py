@@ -3,17 +3,16 @@ from transformers import AutoTokenizer, AutoModelForMaskedLM
 import numpy as np
 
 
-class splade:
+class SpladeRewriter:
     """Elastic SPLADE model"""
 
-    def __init__(self, model_name: str, tokenizer_name: str):
+    def __init__(self, model_name: str):
         """Initialize the model
 
         Args:
             model_name (str): name of the model
-            tokenizer_name (str): name of the tokenizer
         """
-        self.tokenizer = AutoTokenizer.from_pretrained(tokenizer_name, bos_token="<s>")
+        self.tokenizer = AutoTokenizer.from_pretrained(model_name, bos_token="<s>")
         self.model = AutoModelForMaskedLM.from_pretrained(model_name)
 
     def __tokenize_and_preserve(self, sentence, text_labels=None):
@@ -97,7 +96,7 @@ class splade:
             ret.append(t)
         return " ".join(ret)
 
-    def splade_it(self, text: str):
+    def query_expand(self, text: str):
         """SPLADE-ify the text
         Args:
             text (str): input text
