@@ -1,6 +1,6 @@
 from distutils.core import setup
 
-__package__= "simple-splade"
+__package__= "splade4elastic"
 __version__=""
 with open(__package__+"/__init__.py", 'r') as f:
     for line in f:
@@ -14,8 +14,7 @@ setup(
     packages=[__package__],
     install_requires=[
         "numpy>=1.21.2",
-        "pandas>=1.3.0",
-        "scikit-learn>=0.19.0",
+        "transformers>=4.0.0",
     ],
     long_description=long_description,
     long_description_content_type="text/markdown",
@@ -23,7 +22,7 @@ setup(
     description='',
     author='ArgmaxML',
     author_email='splade@argmaxml.com',
-    url='https://github.com/argmaxml/simple-splade',
+    url='https://github.com/argmaxml/splade4elastic',
     keywords=[],
     classifiers=[],
     extras_require = {
