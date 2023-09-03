@@ -1,2 +1,2 @@
-__version__ = "0.0.11"
-from .elastic_splace import SpladeRewriter
+__version__ = "0.0.12"
+from .elastic_splade import SpladeRewriter

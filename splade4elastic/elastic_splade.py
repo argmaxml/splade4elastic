@@ -1,5 +1,6 @@
 import itertools, collections, json, string, re
 from transformers import AutoTokenizer, AutoModelForMaskedLM
+from typing import List
 import numpy as np
 
 
@@ -105,3 +106,13 @@ class SpladeRewriter:
         """
         me = self.__mask_expansion(text)
         return self.__elastic_format(me, text)
+    
+    def transform(self, X: List[str]):
+        """Transforms a list of queries to expanded queries
+        Args:
+            X (List[str]): List of queries
+        Returns:
+            List[str]: List of expanded queries
+        """
+        # TODO: optimize for batch
+        return [self.query_expand(t) for t in X]

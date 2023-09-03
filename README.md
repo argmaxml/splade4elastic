@@ -1,4 +1,4 @@
-# Elastic4Splade
+# Splade4Elastic
 
 A simple query expansion wrapper for elastic search, that uses keyword custom weights derived from an huggingface masked-language-model transformer.
 
