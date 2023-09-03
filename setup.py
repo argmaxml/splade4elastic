@@ -1,6 +1,6 @@
 from distutils.core import setup
 
-__package__= "pkg"
+__package__= "simple-splade"
 __version__=""
 with open(__package__+"/__init__.py", 'r') as f:
     for line in f:
@@ -22,8 +22,8 @@ setup(
     version=__version__,
     description='',
     author='ArgmaxML',
-    author_email='ugoren@argmax.ml',
-    url='https://github.com/argmaxml/pkg',
+    author_email='splade@argmaxml.com',
+    url='https://github.com/argmaxml/simple-splade',
     keywords=[],
     classifiers=[],
     extras_require = {
