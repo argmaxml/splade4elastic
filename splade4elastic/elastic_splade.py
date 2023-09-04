@@ -7,7 +7,7 @@ import numpy as np
 class SpladeRewriter:
     """Elastic SPLADE model"""
 
-    def __init__(self, model_name: str):
+    def __init__(self, model_name: str, expansions_per_word:int = 10):
         """Initialize the model
 
         Args:
@@ -15,6 +15,7 @@ class SpladeRewriter:
         """
         self.tokenizer = AutoTokenizer.from_pretrained(model_name, bos_token="<s>")
         self.model = AutoModelForMaskedLM.from_pretrained(model_name)
+        self.k=expansions_per_word
 
     def __tokenize_and_preserve(self, sentence, text_labels=None):
         if type(sentence) == str:
@@ -45,7 +46,7 @@ class SpladeRewriter:
             )
         ]
 
-    def __mask_expansion(self, txt, k=10):
+    def __mask_expansion(self, txt):
         ret = collections.defaultdict(list)
         X = self.tokenizer.encode(txt, return_tensors="pt")
         words = self.__tokenize_and_preserve(txt)
@@ -61,9 +62,9 @@ class SpladeRewriter:
                 mask_token_logits = logits[0, mask_token_index, :]
                 max_ids = np.argsort(mask_token_logits.to("cpu").detach().numpy())[
                     ::-1
-                ][:k]
+                ][:self.k]
                 max_tokens = self.tokenizer.convert_ids_to_tokens(max_ids)
-                max_scores = np.sort(mask_token_logits.to("cpu").detach().numpy())[::-1][ :k]
+                max_scores = np.sort(mask_token_logits.to("cpu").detach().numpy())[::-1][ :self.k]
 
                 ret[wi].extend(zip(max_tokens, max_scores))
         ret = dict(ret)
