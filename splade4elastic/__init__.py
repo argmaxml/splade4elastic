@@ -1,2 +1,2 @@
-__version__ = "0.0.13"
-from .elastic_splade import SpladeRewriter
+__version__ = "0.0.2"
+from .elastic_splade import SpladeRewriter, MLMBaseRewriter, LinearMLMRewriter
