@@ -10,20 +10,20 @@ class BasicTest(unittest.TestCase):
         pass
 
     def test_base(self):
-        splade = MLMBaseRewriter("bert-base-uncased")
-        text = "The quick brown fox jumps over the lazy dog"
+        splade = MLMBaseRewriter("roberta-base", expansions_per_word=3)
+        text = "Coffee is good for you"
         print(splade.query_expand(text))
         self.assertTrue(True)
 
     def test_splade(self):
-        splade = SpladeRewriter("bert-base-uncased")
-        text = "The quick brown fox jumps over the lazy dog"
+        splade = SpladeRewriter("roberta-base", expansions_per_word=3)
+        text = "Coffee is good for you"
         print(splade.query_expand(text))
         self.assertTrue(True)
 
     def test_linear(self):
-        splade = LinearMLMRewriter("bert-base-uncased")
-        text = "The quick brown fox jumps over the lazy dog"
+        splade = LinearMLMRewriter("roberta-base", expansions_per_word=3)
+        text = "Coffee is good for you"
         print(splade.query_expand(text))
         self.assertTrue(True)
 

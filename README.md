@@ -1,11 +1,11 @@
 # Splade4Elastic
 
-A simple query expansion wrapper for elastic search, that uses keyword custom weights derived from an huggingface masked-language-model transformer.
+A simple query expansion wrapper for elastic search, that uses keyword custom weights derived from an HuggingFace masked-language-model transformer.
 
 ## Example usage
 
     from splade4elastic import SpladeRewriter
-    model_name = "bert-base-uncased"
+    model_name = "roberta-base"
     splader = SpladeRewriter(model_name)
     test_texts = [
         "My name is John",
