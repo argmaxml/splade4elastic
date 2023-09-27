@@ -7,7 +7,7 @@ import numpy as np
 class MLMBaseRewriter:
     """Elastic SPLADE model"""
 
-    def __init__(self, model_name: str, expansions_per_word:int = 10):
+    def __init__(self, model_name: str, expansions_per_word:int = 10, exluded_words=[]):
         """Initialize the model
 
         Args:
