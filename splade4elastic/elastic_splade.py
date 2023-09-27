@@ -16,6 +16,7 @@ class MLMBaseRewriter:
         self.tokenizer = AutoTokenizer.from_pretrained(model_name, bos_token="<s>")
         self.model = AutoModelForMaskedLM.from_pretrained(model_name)
         self.k=expansions_per_word
+        self.exluded_words = exluded_words
         self.const_weight = 1
 
     def __tokenize_to_words(self, sentence):
@@ -51,6 +52,8 @@ class MLMBaseRewriter:
         ]
 
     def do_expansion(self, word):
+        if word in self.exluded_words:
+            return False
         return True
     
     def mask_expansion(self, txt):
