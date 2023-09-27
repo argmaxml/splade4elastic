@@ -60,6 +60,7 @@ class MLMBaseRewriter:
     
     def mask_expansion(self, txt):
         ret = collections.defaultdict(list)
+        special_tokens = [self.tokenizer.bos_token, self.tokenizer.eos_token, self.tokenizer.mask_token]
         X = self.tokenizer.encode(txt, return_tensors="pt")
         word2token = self.__tokenize_and_preserve(txt)
         words = self.__tokenize_to_words(txt)
@@ -78,6 +79,7 @@ class MLMBaseRewriter:
                 #     ti += 1
                 X_m[0, ti] = self.tokenizer.mask_token_id
             logits = self.model(X_m).logits
+            all_combinations = []
             for mask_token_index, token, _ in lst:
                 mask_token_logits = logits[0, mask_token_index, :]
                 max_ids = np.argsort(mask_token_logits.to("cpu").detach().numpy())[
@@ -85,12 +87,60 @@ class MLMBaseRewriter:
                 ][:self.k]
                 max_tokens = self.tokenizer.convert_ids_to_tokens(max_ids)
                 max_scores = np.sort(mask_token_logits.to("cpu").detach().numpy())[::-1][ :self.k]
+                tokens_tuple = zip(max_tokens, max_scores)
+                sub_words = [(t, s) for t, s in tokens_tuple if t not in special_tokens]
+                all_combinations.append(sub_words)
 
-                ret[wi].extend(zip(max_tokens, max_scores))
+            # create all possible combinations of sub-words and normalize their scores
+            # for example: [('Why', 16.411238), ('C', 16.230715)]
+            # [('off', 19.477955), ('Employ', 14.500462), ('ut', 14.452579)]
+            # should be combined to:
+            #  [('Why off', 16.411238*19.477955), ('Why Employ', 16.411238*14.500462), ('Why ut', 16.411238*14.452579), ('C off', 16.230715*19.477955), ('C Employ', 16.230715*14.500462), ('C ut', 16.230715*14.452579)]
+            all_combinations = self.combine_and_normalize(all_combinations)
+            ret[wi].extend(all_combinations)
+                    # ret[wi].extend(zip(max_tokens, max_scores))
         ret = dict(ret)
-        if self.tokenizer.bos_token == ret[0][0]:
-            del ret[0]
         return list(ret.values())
+
+    
+    def combine_and_normalize(self, all_combinations):
+        result = []
+        
+        # Filter out empty sub-lists
+        non_empty_combinations = [sub_list for sub_list in all_combinations if sub_list]
+        
+        # Check if there are any non-empty sub-lists
+        if not non_empty_combinations:
+            return result
+        
+        # Initialize with the first non-empty sub-list
+        initial_combination = non_empty_combinations[0]
+        
+        # Check if there's only one non-empty sub-list
+        if len(non_empty_combinations) == 1:
+            return initial_combination
+        
+        # Create a dictionary to store maximum scores for each word
+        max_scores = {word: max(score for _, score in sub_list) for sub_list in non_empty_combinations for word, _ in sub_list}
+        
+        # Iterate through all possible combinations of sub-words
+        for sub_word_combination in itertools.product(*non_empty_combinations):
+            combined_sub_words = ' '.join(word for word, _ in sub_word_combination)
+            combined_sub_words_no_space = ''.join(word for word, _ in sub_word_combination)
+            
+            # Calculate the product of scores for the sub-words in the combination
+            combined_score = 1.0  # Initialize with a score of 1.0
+            for word, score in sub_word_combination:
+                combined_score *= score / max_scores[word]  # Normalize the score
+            
+            # Append the combined sub-words and their normalized score
+            result.append((combined_sub_words, combined_score))
+            result.append((combined_sub_words_no_space, combined_score))
+        
+        # Sort the result by normalized scores (optional)
+        result.sort(key=lambda x: x[1], reverse=True)
+        
+        return result
 
     def __only_alpha(self, txt):
         return "".join(c for c in txt if c in string.ascii_letters)
