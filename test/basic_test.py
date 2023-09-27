@@ -9,8 +9,14 @@ class BasicTest(unittest.TestCase):
     def setUp(self):
         pass
 
-    def test_base(self):
-        splade = MLMBaseRewriter("roberta-base", expansions_per_word=3)
+    def test_base_with_ignore(self):
+        splade = MLMBaseRewriter("roberta-base", expansions_per_word=3, multi_word="ignore")
+        text = "Coffee is good for you"
+        print(splade.query_expand(text))
+        self.assertTrue(True)
+
+    def test_base_with_split(self):
+        splade = MLMBaseRewriter("roberta-base", expansions_per_word=3, multi_word="split")
         text = "Coffee is good for you"
         print(splade.query_expand(text))
         self.assertTrue(True)

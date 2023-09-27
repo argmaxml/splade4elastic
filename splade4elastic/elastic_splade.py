@@ -7,17 +7,19 @@ import numpy as np
 class MLMBaseRewriter:
     """Elastic SPLADE model"""
 
-    def __init__(self, model_name: str, expansions_per_word:int = 10):
+    def __init__(self, model_name: str, expansions_per_word:int = 10, multi_word="split", exluded_words=[]):
         """Initialize the model
 
         Args:
             model_name (str): name of the model
+            multi_word (str, optional): How to handle multi-word tokens. Defaults to "split". Can be "filter" or "ignore"
         """
         self.tokenizer = AutoTokenizer.from_pretrained(model_name, bos_token="<s>")
         self.model = AutoModelForMaskedLM.from_pretrained(model_name)
         self.k=expansions_per_word
         self.exluded_words = exluded_words
         self.const_weight = 1
+        self.multi_word = multi_word
 
     def __tokenize_to_words(self, sentence):
             return sentence.translate(
@@ -61,10 +63,12 @@ class MLMBaseRewriter:
         X = self.tokenizer.encode(txt, return_tensors="pt")
         word2token = self.__tokenize_and_preserve(txt)
         words = self.__tokenize_to_words(txt)
-
         for wi, lst in word2token:
             if not self.do_expansion(words[wi]):
                 # skip this word
+                ret[wi].append((words[wi], self.const_weight))
+                continue
+            if self.multi_word == "ignore" and len(lst) > 1: # skip multi-word tokens
                 ret[wi].append((words[wi], self.const_weight))
                 continue
             X_m = X.clone()
@@ -84,7 +88,7 @@ class MLMBaseRewriter:
 
                 ret[wi].extend(zip(max_tokens, max_scores))
         ret = dict(ret)
-        if self.tokenizer.bos_token:
+        if self.tokenizer.bos_token == ret[0][0]:
             del ret[0]
         return list(ret.values())
 
@@ -101,8 +105,11 @@ class MLMBaseRewriter:
     def __elastic_format(self, expanded_list, text):
         ret = []
         text = text.lower().split()
+        # print(text)
         for words in expanded_list:
+            # print(words)
             words = self.logits2weights(words)
+            # print(words)
             # The original word should have a higher score
             words = self.__force_weights(words, text)
             words = [(self.__only_alpha(w[0]).lower(), w[1]) for w in words if w[0] != self.tokenizer.bos_token]
@@ -111,11 +118,8 @@ class MLMBaseRewriter:
             words = [(unique, sum(w[1] for w in words if w[0] == unique)) for unique in unique_words]
             # sort by score
             words = sorted(words, key=lambda x: x[1], reverse=True)
-            # print(words)
-            or_statement = []
-            for w in words:
-                or_statement.append(f"{w[0]}^{round(float(w[1]), 2)}")
-            or_statement = " OR ".join(or_statement)
+            or_statement_list = [f"{w[0]}^{round(float(w[1]), 2)}" for w in words]
+            or_statement = " OR ".join(or_statement_list)
             or_statement = f"({or_statement})"
             ret.append(or_statement)
         return " ".join(ret)
