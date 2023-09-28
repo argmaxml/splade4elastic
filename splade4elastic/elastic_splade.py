@@ -33,9 +33,26 @@ class MLMBaseRewriter:
         return frozenset(words)
 
     def __tokenize_to_words(self, sentence):
-            return sentence.translate(
-                {ord(c): " " for c in string.punctuation}
-            ).split()
+        # Split the sentence into words
+        words = sentence.split()
+
+        # Define a translation table to replace punctuation marks with spaces
+        translation_table = str.maketrans('', '', string.punctuation)
+
+        # Initialize a list to store the cleaned words
+        cleaned_words = []
+
+        for word in words:
+            # Check if the word is not a special token
+            if word not in self.tokenizer.all_special_tokens:
+                # Remove punctuation marks from the word
+                cleaned_word = word.translate(translation_table)
+                cleaned_words.append(cleaned_word)
+            else:
+                # If the word is a special token, add it as is
+                cleaned_words.append(word)
+
+        return cleaned_words
     
     def __tokenize_and_preserve(self, sentence, text_labels=None):
         if type(sentence) == str:
@@ -69,7 +86,9 @@ class MLMBaseRewriter:
     
     def mask_expansion(self, txt):
         ret = collections.defaultdict(list)
-        special_tokens = [self.tokenizer.bos_token, self.tokenizer.eos_token, self.tokenizer.mask_token]
+        special_tokens = self.tokenizer.all_special_tokens
+        if self.tokenizer.bos_token:
+            txt = self.tokenizer.bos_token + ' ' + txt
         X = self.tokenizer.encode(txt, return_tensors="pt")
         word2token = self.__tokenize_and_preserve(txt)
         words = self.__tokenize_to_words(txt)
@@ -104,12 +123,12 @@ class MLMBaseRewriter:
             # create all possible combinations of sub-words and normalize their scores
             all_combinations = self.combine_and_normalize(all_combinations)
             all_combinations = [(w[1:], s) if w.startswith("Ġ") else (w, s) for w, s in all_combinations]
-            
+
             if self.multi_word == "filter":
                 # filter out sub-words that are not in linux built-in dictionary
                 all_combinations = [(w, s) for w, s in all_combinations if w.lower() in self.vocab]
                 
-                 
+            all_combinations = [(w, s) for w, s in all_combinations if len(w) > 0] # filter out empty sub-words
             ret[wi].extend(all_combinations)
                     
         ret = dict(ret)
@@ -138,7 +157,7 @@ class MLMBaseRewriter:
         
         # Iterate through all possible combinations of sub-words
         for sub_word_combination in itertools.product(*non_empty_combinations):
-            combined_sub_words = ''.join(word.replace('Ġ', ' ') for word, _ in sub_word_combination)
+            combined_sub_words = ''.join(word.replace('Ġ', ' ') for word, _ in sub_word_combination) # Combine the sub-words and use 'Ġ' to decide where to add spaces
             
             # Calculate the product of scores for the sub-words in the combination
             combined_score = 1.0  # Initialize with a score of 1.0
