@@ -20,6 +20,17 @@ class MLMBaseRewriter:
         self.exluded_words = exluded_words
         self.const_weight = 1
         self.multi_word = multi_word
+        self.vocab = self.read_vocab() if multi_word == "filter" else None
+
+    def read_vocab(self, vocab='/usr/share/dict/words'):
+        try: 
+            with open(vocab, 'r') as f:
+                words = [l.strip() for l in f.readlines()]
+        except FileNotFoundError:
+            print(f"Could not find {vocab} file, using empty vocab")
+            return set()
+        words = [w.lower() for w in words if len(w)>1]
+        return frozenset(words)
 
     def __tokenize_to_words(self, sentence):
             return sentence.translate(
@@ -54,9 +65,7 @@ class MLMBaseRewriter:
         ]
 
     def do_expansion(self, word):
-        if word in self.exluded_words:
-            return False
-        return True
+        return word not in self.exluded_words # expand all words except for the excluded ones
     
     def mask_expansion(self, txt):
         ret = collections.defaultdict(list)
@@ -86,19 +95,23 @@ class MLMBaseRewriter:
                     ::-1
                 ][:self.k]
                 max_tokens = self.tokenizer.convert_ids_to_tokens(max_ids)
+                # max_tokens = [t[1:] if t.startswith("Ġ") else t for t in max_tokens] # remove the leading space
                 max_scores = np.sort(mask_token_logits.to("cpu").detach().numpy())[::-1][ :self.k]
                 tokens_tuple = zip(max_tokens, max_scores)
                 sub_words = [(t, s) for t, s in tokens_tuple if t not in special_tokens]
                 all_combinations.append(sub_words)
 
             # create all possible combinations of sub-words and normalize their scores
-            # for example: [('Why', 16.411238), ('C', 16.230715)]
-            # [('off', 19.477955), ('Employ', 14.500462), ('ut', 14.452579)]
-            # should be combined to:
-            #  [('Why off', 16.411238*19.477955), ('Why Employ', 16.411238*14.500462), ('Why ut', 16.411238*14.452579), ('C off', 16.230715*19.477955), ('C Employ', 16.230715*14.500462), ('C ut', 16.230715*14.452579)]
             all_combinations = self.combine_and_normalize(all_combinations)
+            all_combinations = [(w[1:], s) if w.startswith("Ġ") else (w, s) for w, s in all_combinations]
+            
+            if self.multi_word == "filter":
+                # filter out sub-words that are not in linux built-in dictionary
+                all_combinations = [(w, s) for w, s in all_combinations if w.lower() in self.vocab]
+                
+                 
             ret[wi].extend(all_combinations)
-                    # ret[wi].extend(zip(max_tokens, max_scores))
+                    
         ret = dict(ret)
         return list(ret.values())
 
@@ -125,8 +138,7 @@ class MLMBaseRewriter:
         
         # Iterate through all possible combinations of sub-words
         for sub_word_combination in itertools.product(*non_empty_combinations):
-            combined_sub_words = ' '.join(word for word, _ in sub_word_combination)
-            combined_sub_words_no_space = ''.join(word for word, _ in sub_word_combination)
+            combined_sub_words = ''.join(word.replace('Ġ', ' ') for word, _ in sub_word_combination)
             
             # Calculate the product of scores for the sub-words in the combination
             combined_score = 1.0  # Initialize with a score of 1.0
@@ -135,7 +147,6 @@ class MLMBaseRewriter:
             
             # Append the combined sub-words and their normalized score
             result.append((combined_sub_words, combined_score))
-            result.append((combined_sub_words_no_space, combined_score))
         
         # Sort the result by normalized scores (optional)
         result.sort(key=lambda x: x[1], reverse=True)
