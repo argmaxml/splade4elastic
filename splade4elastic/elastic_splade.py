@@ -109,7 +109,7 @@ class MLMBaseRewriter:
             logits = self.model(X_m).logits
             all_combinations = []
             for mask_token_index, token, _ in lst:
-                mask_token_logits = logits[0, mask_token_index, :]
+                mask_token_logits = logits[0, mask_token_index + 1, :] # need to add 1 because of the bos token we added
                 max_ids = np.argsort(mask_token_logits.to("cpu").detach().numpy())[
                     ::-1
                 ][:self.k]
@@ -227,7 +227,7 @@ class MLMBaseRewriter:
 
 class LinearMLMRewriter(MLMBaseRewriter):
     def logits2weights(self, word_logits):
-            min_score = min(w[1] for w in word_logits)
+            min_score = min(w[1] for w in word_logits) 
             ret = [(w[0], w[1] - min_score) for w in word_logits]
             norm_factor = sum(w[1] for w in ret)
             ret = [(w[0], w[1]/norm_factor) for w in ret]
