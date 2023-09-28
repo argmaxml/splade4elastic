@@ -7,8 +7,8 @@ from splade4elastic import *
 
 class BasicTest(unittest.TestCase):
     def setUp(self):
-        # self.text = "Coffee is good for you"
-        self.text = "My name is John"
+        self.text = "Coffee is good for you"
+        # self.text = "My name is John"
 
     def test_base_with_ignore(self):
         splade = MLMBaseRewriter("roberta-base", expansions_per_word=3, multi_word="ignore")

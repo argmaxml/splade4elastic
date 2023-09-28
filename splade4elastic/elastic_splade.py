@@ -109,7 +109,7 @@ class MLMBaseRewriter:
             logits = self.model(X_m).logits
             all_combinations = []
             for mask_token_index, token, _ in lst:
-                mask_token_logits = logits[0, mask_token_index + 1, :] # need to add 1 because of the bos token we added
+                mask_token_logits = logits[0, mask_token_index, :] # need to add 1 because of the bos token we added
                 max_ids = np.argsort(mask_token_logits.to("cpu").detach().numpy())[
                     ::-1
                 ][:self.k]
@@ -126,7 +126,7 @@ class MLMBaseRewriter:
 
             if self.multi_word == "filter":
                 # filter out sub-words that are not in linux built-in dictionary
-                all_combinations = [(w, s) for w, s in all_combinations if w.lower() in self.vocab]
+                all_combinations = [(w, s) for w, s in all_combinations if w.lower() in self.vocab or len(w.split(" ")) > 1]
                 
             all_combinations = [(w, s) for w, s in all_combinations if len(w) > 0] # filter out empty sub-words
             ret[wi].extend(all_combinations)
@@ -172,7 +172,8 @@ class MLMBaseRewriter:
         
         return result
 
-    def __only_alpha(self, txt):
+    def __only_alpha(self, txt): 
+        # consider to delete this function
         return "".join(c for c in txt if c in string.ascii_letters)
     
     def logits2weights(self, word_logits):
@@ -192,7 +193,7 @@ class MLMBaseRewriter:
             # print(words)
             # The original word should have a higher score
             words = self.__force_weights(words, text)
-            words = [(self.__only_alpha(w[0]).lower(), w[1]) for w in words if w[0] != self.tokenizer.bos_token]
+            words = [(w[0].lower(), w[1]) for w in words if w[0] != self.tokenizer.bos_token]
             # unite equal words and sum their scores
             unique_words = {w[0] for w in words}
             words = [(unique, sum(w[1] for w in words if w[0] == unique)) for unique in unique_words]
