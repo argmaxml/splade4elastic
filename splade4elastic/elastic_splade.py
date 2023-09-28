@@ -227,6 +227,8 @@ class MLMBaseRewriter:
 
 class LinearMLMRewriter(MLMBaseRewriter):
     def logits2weights(self, word_logits):
+            if len(word_logits) == 0:
+                return word_logits # empty list
             min_score = min(w[1] for w in word_logits) 
             ret = [(w[0], w[1] - min_score) for w in word_logits]
             norm_factor = sum(w[1] for w in ret)
@@ -234,6 +236,8 @@ class LinearMLMRewriter(MLMBaseRewriter):
             return ret
 class SpladeRewriter(MLMBaseRewriter):
         def logits2weights(self, word_logits):
+            if len(word_logits) == 0:
+                return word_logits # empty list
             ret = [(w[0], np.exp(w[1])) for w in word_logits]
             norm_factor = sum(w[1] for w in ret)
             ret = [(w[0], w[1]/norm_factor) for w in ret]
